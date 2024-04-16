@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"time"
+	"sync"
 )
 
 type Task struct {
@@ -14,10 +14,12 @@ var MAX_QUEUE_SIZE = 1000
 
 var Queue = make(chan Task, MAX_QUEUE_SIZE)
 
+var wg sync.WaitGroup = sync.WaitGroup{}
+
 // workers
 func worker(id int) {
 	for task := range Queue {
-		processTask(task)
+		processTask(task, id)
 	}
 }
 
@@ -27,11 +29,14 @@ func startWorkers(numWorkers int) {
 	}
 }
 
-func processTask(task Task) {
+func processTask(task Task, workerId int) {
+	fmt.Println("Using worker ID", workerId)
 	fmt.Printf("Processing task with ID = %d: %s \n", task.ID, task.Content)
+	wg.Done()
 }
 
 func addTaskToQueue(task Task) {
+	wg.Add(1)
 	Queue <- task
 }
 
@@ -51,9 +56,20 @@ func main() {
 		ID:      2,
 		Content: "Task2 is time taking.",
 	}
-	time.Sleep(2 * time.Second)
+	// time.Sleep(2 * time.Second)
 	addTaskToQueue(task2)
 
+	for i := 0; i <= 100; i++ {
+		task := Task{
+			ID:      i,
+			Content: fmt.Sprintf("Task%v is a regular task.", i),
+		}
+
+		addTaskToQueue(task)
+	}
+
 	// Keep waiting for all go routines to end.
-	time.Sleep(time.Second * 10)
+	wg.Wait()
+
+	fmt.Println("All tasks done")
 }
